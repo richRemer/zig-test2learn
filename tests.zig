@@ -13,12 +13,20 @@ fn raiseAnError() TestError!void {
   return TestError.AnError;
 }
 
+// TODO: demonstrate container variable order flexibility
+
 test "literals" {
   try std.testing.expectEqual(bool, @TypeOf(true));
   try std.testing.expectEqual(comptime_int, @TypeOf(42));
   try std.testing.expectEqual(comptime_float, @TypeOf(3.14159));
   try std.testing.expectEqual(comptime_int, @TypeOf('a'));
   try std.testing.expectEqual(*const[3:0]u8, @TypeOf("foo"));
+
+  try std.testing.expectEqual(255, 0xff);       // hex lowercase
+  try std.testing.expectEqual(255, 0xFF);       // hex uppercase
+  try std.testing.expectEqual(255, 0o377);      // octal
+  try std.testing.expectEqual(255, 0b11111111); // binary
+  try std.testing.expectEqual(1000, 1_000);     // underscore separator
 
   // TODO: 'type' type
 }
@@ -193,6 +201,20 @@ test "identifiers" {
   _ = @"foo bar";
 }
 
+test "static container variables" {
+  // q.v. fn nextStatic() u32
+  // function declares a const struct, which acts as a static local variable
+
+  try std.testing.expectEqual(1, nextStatic());
+  try std.testing.expectEqual(2, nextStatic());
+}
+// used in the previous test to demonstrate thread local storage via container
+fn nextStatic() u32 {
+  const StaticContainer = struct { var id: u32 = 0; };
+  StaticContainer.id += 1;
+  return StaticContainer.id;
+}
+
 test "error namespace" {
   try std.testing.expect(error.AnError == TestError.AnError);
   try std.testing.expect(error.AnError != TestError.AnotherError);
@@ -255,3 +277,23 @@ test "defer" {
   try list.append(23);
   try std.testing.expectEqual(1, list.items.len);
 }
+
+test "thread local variables" {
+  // q.v. fn testThreadValue() !void
+  // function mutates threadlocal variable; each thread has its own copy
+  const t1 = try std.Thread.spawn(.{}, testThreadValue, .{});
+  const t2 = try std.Thread.spawn(.{}, testThreadValue, .{});
+
+  testThreadValue() catch {};   // run once in current thread
+  t1.join();                    // ensure t1 thread is complete
+  t2.join();                    // ensure t2 thread is complete
+}
+// these are used in the previous test to demonstrate thread local variables
+threadlocal var thread_value: u32 = 0;
+fn testThreadValue() !void {
+  try std.testing.expectEqual(0, thread_value);
+  thread_value += 1;
+  try std.testing.expectEqual(1, thread_value);
+}
+
+// TODO: addition, including wrapping (+/-%), saturating (+/-|), and chaos (+/-)
