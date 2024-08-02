@@ -1,5 +1,9 @@
 const std = @import("std");
 
+// using testing allocator for these tests; Zig provides various allocators for
+// different use cases; the testing allocator reports memory leaks
+const allocator = std.testing.allocator;
+
 const TestError = error {
   AnError,
   AnotherError,
@@ -186,4 +190,22 @@ test "multiline string literals" {
   try std.testing.expectEqual("foo\\x23", string);
   try std.testing.expectEqual(3, string_with_newlines.len);
   try std.testing.expectEqual('\n', string_with_newlines[1]);
+}
+
+test "memory allocation" {
+  var list = std.ArrayList(u8).init(allocator);
+
+  try list.append(23);
+  try std.testing.expectEqual(1, list.items.len);
+
+  // avoids run-time error: memory address 0x... leaked:
+  list.deinit();
+}
+
+test "defer" {
+  var list = std.ArrayList(u8).init(allocator);
+  defer list.deinit();    // more sensible place to put cleanup using 'defer'
+
+  try list.append(23);
+  try std.testing.expectEqual(1, list.items.len);
 }
