@@ -147,6 +147,52 @@ test "float types" {
   // const div0 = 1.0 / 0.0;
 }
 
+test "identifiers" {
+  const starts_with_alpha: bool = true;
+  const _starts_with_underscore: bool = true;
+  const contains_1234567890: bool = true;
+  const TypesAreCapitalizedByConvention = struct { x:u32, y:u32 };
+
+  // raises compile-time error: expected 'an identifier', found 'a number
+  // literal'
+  // const 1234567890_cant_start_identifier: bool = false;
+
+  // raises compile-time error: expected '=', found '-'
+  // const hyphenated-identifier: bool = false;
+
+  // raises compile-time error: expected 'an identifier', found 'a builtin
+  // function'
+  // const @reserved: bool = false;
+
+  // raises compile-time error: expected '=', found 'an identifier'
+  // const foo bar: bool = false;
+
+  // raises compile-time error: local constant shadows declaration of
+  // 'allocator'
+  // const allocator: bool = false;
+
+  // use @"..." to define unusual identifiers
+  const @"1234567890_cant_start_identifier": bool = true;
+  const @"hyphenated-identifier": bool = true;
+  const @"@reserved": bool = true;
+  const @"foo bar": bool = true;
+
+  // but you still can't shadow an outer declaration
+  // raises compile-time error: local constant shadows declaration of
+  // 'allocator'
+  // const @"allocator": bool = false;
+
+  // avoid compile-time error: unused local constant
+  _ = starts_with_alpha;
+  _ = _starts_with_underscore;
+  _ = contains_1234567890;
+  _ = TypesAreCapitalizedByConvention;
+  _ = @"1234567890_cant_start_identifier";
+  _ = @"hyphenated-identifier";
+  _ = @"@reserved";
+  _ = @"foo bar";
+}
+
 test "error namespace" {
   try std.testing.expect(error.AnError == TestError.AnError);
   try std.testing.expect(error.AnError != TestError.AnotherError);
