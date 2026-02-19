@@ -87,8 +87,8 @@ test "optional values" {
     try std.testing.expect(optional_without_value != 0);
     try std.testing.expectEqual(optional_with_value orelse fallback, value);
     try std.testing.expectEqual(optional_without_value orelse fallback, fallback);
-    try std.testing.expect(@typeInfo(RequiredType) != .Optional);
-    try std.testing.expect(@typeInfo(OptionalType) == .Optional);
+    try std.testing.expect(@typeInfo(RequiredType) != .optional);
+    try std.testing.expect(@typeInfo(OptionalType) == .optional);
 }
 
 test "integer types" {
@@ -263,7 +263,7 @@ test "multiline string literals" {
 }
 
 test "memory allocation" {
-    var list = std.ArrayList(u8).init(allocator);
+    var list = std.array_list.Managed(u8).init(allocator);
 
     try list.append(23);
     try std.testing.expectEqual(1, list.items.len);
@@ -273,7 +273,7 @@ test "memory allocation" {
 }
 
 test "defer" {
-    var list = std.ArrayList(u8).init(allocator);
+    var list = std.array_list.Managed(u8).init(allocator);
     defer list.deinit(); // more sensible place to put cleanup using 'defer'
 
     try list.append(23);
