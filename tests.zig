@@ -299,3 +299,54 @@ fn testThreadValue() !void {
 }
 
 // TODO: addition, including wrapping (+/-%), saturating (+/-|), and chaos (+/-)
+
+test "alloc/free" {
+    const bytes = try allocator.alloc(u8, 8);
+    defer allocator.free(bytes);
+
+    // raises error: ptr must be a single item pointer
+    // allocator.destroy(bytes);
+
+    // thread panic: Invalid free
+    // allocator.destroy(@as(*u8, @ptrCast(bytes.ptr)));
+
+    try std.testing.expectEqual([]u8, @TypeOf(bytes));
+}
+
+test "create/destroy" {
+    const Type = struct { val: usize };
+    const object = try allocator.create(Type);
+    defer allocator.destroy(object);
+
+    // raises error: Expected pointer, slice, array, or vector type, found '...*Type'
+    // allocator.free(object);
+
+    try std.testing.expectEqual(*Type, @TypeOf(object));
+}
+
+test "alloc/destroy" {
+    const bytes = try allocator.alloc(u8, @sizeOf(usize));
+    defer allocator.destroy(@as(*align(1) usize, @ptrCast(bytes.ptr)));
+
+    // raises error: @ptrCast increases pointer alignment
+    // allocator.destroy(@as(*usize, @ptrCast(bytes.ptr)));
+
+    // Segmentation fault at address 0x...
+    // allocator.destroy(@as(*usize, @ptrCast(@alignCast(bytes.ptr))));
+
+    try std.testing.expectEqual([]u8, @TypeOf(bytes));
+}
+
+test "create/free" {
+    const Type = struct { val: usize };
+    const object = try allocator.create(Type);
+    defer allocator.free(@as(*align(@sizeOf(Type)) [@sizeOf(Type)]u8, @ptrCast(object)));
+
+    // warning: Allocation alignment 8 does not match free alignment 1. Allocation:...
+    // allocator.free(@as(*[@sizeOf(Type)]u8, @ptrCast(object)));
+
+    // warning: Allocation size 8 bytes does not match free size 1. Allocation:...
+    // allocator.free(@as(*align(@sizeOf(Type)) [1]u8, @ptrCast(object)));
+
+    try std.testing.expectEqual(*Type, @TypeOf(object));
+}
