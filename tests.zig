@@ -387,3 +387,20 @@ test "Object.alloc/Object.free w/ extra data" {
 
     try testing.expectEqual(*Type, @TypeOf(object));
 }
+
+test "formatting objects" {
+    const Point = struct {
+        x: u16,
+        y: u16,
+
+        pub fn format(this: @This(), writer: anytype) !void {
+            try writer.print("{d}x{d}", .{ this.x, this.y });
+        }
+    };
+
+    const point: Point = .{ .x = 3, .y = 17 };
+    const formatted = try std.fmt.allocPrint(allocator, "{f}", .{point});
+    defer allocator.free(formatted);
+
+    try testing.expectEqualSlices(u8, "3x17", formatted);
+}
