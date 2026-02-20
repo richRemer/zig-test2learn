@@ -1,5 +1,11 @@
 const std = @import("std");
 const testing = std.testing;
+const bufPrint = std.fmt.bufPrint;
+const expect = testing.expect;
+const expectError = testing.expectError;
+const expectEqual = testing.expectEqual;
+const expectEqualStrings = testing.expectEqualStrings;
+const expectStringStartsWith = testing.expectStringStartsWith;
 
 // using testing allocator for these tests; Zig provides various allocators for
 // different use cases; the testing allocator reports memory leaks and other
@@ -18,58 +24,57 @@ fn raiseAnError() TestError!void {
 // TODO: demonstrate container variable order flexibility
 
 test "literals" {
-    try testing.expectEqual(bool, @TypeOf(true));
-    try testing.expectEqual(comptime_int, @TypeOf(42));
-    try testing.expectEqual(comptime_float, @TypeOf(3.14159));
-    try testing.expectEqual(comptime_int, @TypeOf('a'));
-    try testing.expectEqual(*const [3:0]u8, @TypeOf("foo"));
+    try expectEqual(bool, @TypeOf(true));
+    try expectEqual(comptime_int, @TypeOf(42));
+    try expectEqual(comptime_float, @TypeOf(3.14159));
+    try expectEqual(comptime_int, @TypeOf('a'));
+    try expectEqual(*const [3:0]u8, @TypeOf("foo"));
 
-    try testing.expectEqual(255, 0xff); // hex lowercase
-    try testing.expectEqual(255, 0xFF); // hex uppercase
-    try testing.expectEqual(255, 0o377); // octal
-    try testing.expectEqual(255, 0b11111111); // binary
-    try testing.expectEqual(1000, 1_000); // underscore separator
+    try expectEqual(255, 0xff); // hex lowercase
+    try expectEqual(255, 0xFF); // hex uppercase
+    try expectEqual(255, 0o377); // octal
+    try expectEqual(255, 0b11111111); // binary
+    try expectEqual(1000, 1_000); // underscore separator
 
     // TODO: 'type' type
 }
 
 test "escapes" {
-    try testing.expectEqual(9, '\t');
-    try testing.expectEqual(10, '\n');
-    try testing.expectEqual(13, '\r');
-    try testing.expectEqual(39, '\'');
-    try testing.expectEqual(34, '\"');
-    try testing.expectEqual(92, '\\');
-    try testing.expectEqual(96, '\x60'); // hex 60 === dec 96
-    try testing.expectEqual(584, '\u{248}'); // UTF-8 encoded
+    try expectEqual(9, '\t');
+    try expectEqual(10, '\n');
+    try expectEqual(13, '\r');
+    try expectEqual(39, '\'');
+    try expectEqual(34, '\"');
+    try expectEqual(92, '\\');
+    try expectEqual(96, '\x60'); // hex 60 === dec 96
+    try expectEqual(584, '\u{248}'); // UTF-8 encoded
 
-    // raises compile-time error: unicode escape does not correspond to a valid
-    // codepoint
-    // try testing.expectEqual(1114112, '\u{110000}');
+    // error: unicode escape does not correspond to a valid codepoint
+    // try expectEqual(1114112, '\u{110000}');
 }
 
 test "constants" {
     const immutable: u32 = 42;
-    // raises compile-time error: unused local constant
+    // error: unused local constant
     // const unused: u32 = 23;
 
-    // raises compile-time error: cannot assign to constant
+    // error: cannot assign to constant
     // immutable = 42;
 
-    try testing.expectEqual(42, immutable);
+    try expectEqual(42, immutable);
 }
 
 test "variables" {
     var mutable: u32 = 42;
     var addressed: u32 = 2112;
-    // raises compile-time error: local variable is never mutated
+    // error: local variable is never mutated
     // var unused: u32 = 2112;
 
     mutable = 23;
-    // '&' operator avoids compile-time error: local variable is never mutated
+    // '&' operator avoids error: local variable is never mutated
     _ = &addressed;
 
-    try testing.expectEqual(23, mutable);
+    try expectEqual(23, mutable);
 }
 
 // TODO: test undefined values
@@ -82,15 +87,15 @@ test "optional values" {
     const RequiredType = @TypeOf(value);
     const OptionalType = @TypeOf(optional_with_value);
 
-    // raises compile-time error: expected type 'u8', found '?u8'
+    // error: expected type 'u8', found '?u8'
     // const required: u8 = optional_with_value;
 
-    try testing.expect(optional_without_value == null);
-    try testing.expect(optional_without_value != 0);
-    try testing.expectEqual(optional_with_value orelse fallback, value);
-    try testing.expectEqual(optional_without_value orelse fallback, fallback);
-    try testing.expect(@typeInfo(RequiredType) != .optional);
-    try testing.expect(@typeInfo(OptionalType) == .optional);
+    try expect(optional_without_value == null);
+    try expect(optional_without_value != 0);
+    try expectEqual(optional_with_value orelse fallback, value);
+    try expectEqual(optional_without_value orelse fallback, fallback);
+    try expect(@typeInfo(RequiredType) != .optional);
+    try expect(@typeInfo(OptionalType) == .optional);
 }
 
 test "integer types" {
@@ -105,14 +110,14 @@ test "integer types" {
     var bit: u1 = bigint;
 
     bit = 1;
-    // raises compile-time error: type 'u1' cannot represent integer value '2'
+    // error: type 'u1' cannot represent integer value '2'
     // bit = 2;
 
-    try testing.expectEqual(1, bit);
-    try testing.expectEqual(7, std.math.maxInt(@TypeOf(octal)));
-    try testing.expectEqual(0, std.math.minInt(@TypeOf(octal)));
-    try testing.expectEqual(1, std.math.maxInt(@TypeOf(signed)));
-    try testing.expectEqual(-2, std.math.minInt(@TypeOf(signed)));
+    try expectEqual(1, bit);
+    try expectEqual(7, std.math.maxInt(@TypeOf(octal)));
+    try expectEqual(0, std.math.minInt(@TypeOf(octal)));
+    try expectEqual(1, std.math.maxInt(@TypeOf(signed)));
+    try expectEqual(-2, std.math.minInt(@TypeOf(signed)));
 }
 
 test "float types" {
@@ -124,36 +129,36 @@ test "float types" {
     const extended: c_longdouble = double;
     const quadruple: f128 = extended;
 
-    try testing.expectEqual(3.140625, quadruple);
+    try expectEqual(3.140625, quadruple);
 
-    try testing.expectEqual(5, std.math.floatExponentBits(f16));
-    try testing.expectEqual(8, std.math.floatExponentBits(f32));
-    try testing.expectEqual(11, std.math.floatExponentBits(f64));
-    try testing.expectEqual(15, std.math.floatExponentBits(c_longdouble));
-    try testing.expectEqual(15, std.math.floatExponentBits(f128));
+    try expectEqual(5, std.math.floatExponentBits(f16));
+    try expectEqual(8, std.math.floatExponentBits(f32));
+    try expectEqual(11, std.math.floatExponentBits(f64));
+    try expectEqual(15, std.math.floatExponentBits(c_longdouble));
+    try expectEqual(15, std.math.floatExponentBits(f128));
 
-    try testing.expectEqual(10, std.math.floatMantissaBits(f16));
-    try testing.expectEqual(23, std.math.floatMantissaBits(f32));
-    try testing.expectEqual(52, std.math.floatMantissaBits(f64));
-    try testing.expectEqual(64, std.math.floatMantissaBits(c_longdouble));
-    try testing.expectEqual(112, std.math.floatMantissaBits(f128));
+    try expectEqual(10, std.math.floatMantissaBits(f16));
+    try expectEqual(23, std.math.floatMantissaBits(f32));
+    try expectEqual(52, std.math.floatMantissaBits(f64));
+    try expectEqual(64, std.math.floatMantissaBits(c_longdouble));
+    try expectEqual(112, std.math.floatMantissaBits(f128));
 
-    try testing.expectEqual(10, std.math.floatFractionalBits(f16));
-    try testing.expectEqual(23, std.math.floatFractionalBits(f32));
-    try testing.expectEqual(52, std.math.floatFractionalBits(f64));
-    try testing.expectEqual(63, std.math.floatFractionalBits(c_longdouble));
-    try testing.expectEqual(112, std.math.floatFractionalBits(f128));
+    try expectEqual(10, std.math.floatFractionalBits(f16));
+    try expectEqual(23, std.math.floatFractionalBits(f32));
+    try expectEqual(52, std.math.floatFractionalBits(f64));
+    try expectEqual(63, std.math.floatFractionalBits(c_longdouble));
+    try expectEqual(112, std.math.floatFractionalBits(f128));
 
-    try testing.expectEqual(1e-45, std.math.floatTrueMin(f32));
-    try testing.expectEqual(1.1754944e-38, std.math.floatMin(f32));
-    try testing.expectEqual(3.4028235e38, std.math.floatMax(f32));
-    try testing.expectEqual(1.1920929e-7, std.math.floatEps(f32));
-    try testing.expectEqual(1.1920929e-7, std.math.floatEpsAt(f32, 1.0));
+    try expectEqual(1e-45, std.math.floatTrueMin(f32));
+    try expectEqual(1.1754944e-38, std.math.floatMin(f32));
+    try expectEqual(3.4028235e38, std.math.floatMax(f32));
+    try expectEqual(1.1920929e-7, std.math.floatEps(f32));
+    try expectEqual(1.1920929e-7, std.math.floatEpsAt(f32, 1.0));
 
-    try testing.expectEqual(std.math.inf(f32), std.math.inf(f16));
-    try testing.expect(std.math.nan(f32) != std.math.nan(f32));
+    try expectEqual(std.math.inf(f32), std.math.inf(f16));
+    try expect(std.math.nan(f32) != std.math.nan(f32));
 
-    // raises compile-time error: division by zero here causes undefined behavior
+    // error: division by zero here causes undefined behavior
     // const div0 = 1.0 / 0.0;
 }
 
@@ -163,22 +168,19 @@ test "identifiers" {
     const contains_1234567890: bool = true;
     const TypesAreCapitalizedByConvention = struct { x: u32, y: u32 };
 
-    // raises compile-time error: expected 'an identifier', found 'a number
-    // literal'
+    // error: expected 'an identifier', found 'a number literal'
     // const 1234567890_cant_start_identifier: bool = false;
 
-    // raises compile-time error: expected '=', found '-'
+    // error: expected '=', found '-'
     // const hyphenated-identifier: bool = false;
 
-    // raises compile-time error: expected 'an identifier', found 'a builtin
-    // function'
+    // error: expected 'an identifier', found 'a builtin function'
     // const @reserved: bool = false;
 
-    // raises compile-time error: expected '=', found 'an identifier'
+    // error: expected '=', found 'an identifier'
     // const foo bar: bool = false;
 
-    // raises compile-time error: local constant shadows declaration of
-    // 'allocator'
+    // error: local constant shadows declaration of 'allocator'
     // const allocator: bool = false;
 
     // use @"..." to define unusual identifiers
@@ -188,11 +190,10 @@ test "identifiers" {
     const @"foo bar": bool = true;
 
     // but you still can't shadow an outer declaration
-    // raises compile-time error: local constant shadows declaration of
-    // 'allocator'
+    // error: local constant shadows declaration of 'allocator'
     // const @"allocator": bool = false;
 
-    // avoid compile-time error: unused local constant
+    // avoid error: unused local constant
     _ = starts_with_alpha;
     _ = _starts_with_underscore;
     _ = contains_1234567890;
@@ -207,8 +208,8 @@ test "static container variables" {
     // q.v. fn nextStatic() u32
     // function declares a const struct, which acts as a static local variable
 
-    try testing.expectEqual(1, nextStatic());
-    try testing.expectEqual(2, nextStatic());
+    try expectEqual(1, nextStatic());
+    try expectEqual(2, nextStatic());
 }
 // used in the previous test to demonstrate thread local storage via container
 fn nextStatic() u32 {
@@ -220,13 +221,13 @@ fn nextStatic() u32 {
 }
 
 test "error namespace" {
-    try testing.expect(error.AnError == TestError.AnError);
-    try testing.expect(error.AnError != TestError.AnotherError);
+    try expect(error.AnError == TestError.AnError);
+    try expect(error.AnError != TestError.AnotherError);
 }
 
 test "returning error" {
     const err = raiseAnError();
-    try testing.expectError(TestError.AnError, err);
+    try expectError(TestError.AnError, err);
 }
 
 test "array sentinels" {
@@ -237,16 +238,16 @@ test "array sentinels" {
     const with_sentinel = [_:0]u8{ 'f', 'o', 'o' };
     const without_sentinel = [_]u8{ 'f', 'o', 'o' };
 
-    try testing.expectEqual(all_sentinels.len, 3);
-    try testing.expectEqual(with_sentinel.len, 3);
-    try testing.expectEqual(without_sentinel.len, 3);
-    try testing.expectEqual(with_sentinel[3], 0);
-    try testing.expectEqual(all_sentinels[3], 0);
+    try expectEqual(all_sentinels.len, 3);
+    try expectEqual(with_sentinel.len, 3);
+    try expectEqual(without_sentinel.len, 3);
+    try expectEqual(with_sentinel[3], 0);
+    try expectEqual(all_sentinels[3], 0);
 
-    // raises compile-time error: index 3 outside array of length 3
+    // error: index 3 outside array of length 3
     // _ = without_sentinel[3];
 
-    try testing.expect(std.mem.eql(u8, &with_sentinel, &without_sentinel));
+    try expect(std.mem.eql(u8, &with_sentinel, &without_sentinel));
 }
 
 test "multiline string literals" {
@@ -258,19 +259,19 @@ test "multiline string literals" {
         \\2
     ;
 
-    try testing.expectEqual(7, string.len);
-    try testing.expectEqual("foo\\x23", string);
-    try testing.expectEqual(3, string_with_newlines.len);
-    try testing.expectEqual('\n', string_with_newlines[1]);
+    try expectEqual(7, string.len);
+    try expectEqual("foo\\x23", string);
+    try expectEqual(3, string_with_newlines.len);
+    try expectEqual('\n', string_with_newlines[1]);
 }
 
 test "memory allocation" {
     var list = std.array_list.Managed(u8).init(allocator);
 
     try list.append(23);
-    try testing.expectEqual(1, list.items.len);
+    try expectEqual(1, list.items.len);
 
-    // avoids run-time error: memory address 0x... leaked:
+    // avoids error: memory address 0x... leaked:
     list.deinit();
 }
 
@@ -279,7 +280,7 @@ test "defer" {
     defer list.deinit(); // more sensible place to put cleanup using 'defer'
 
     try list.append(23);
-    try testing.expectEqual(1, list.items.len);
+    try expectEqual(1, list.items.len);
 }
 
 test "thread local variables" {
@@ -295,9 +296,9 @@ test "thread local variables" {
 // these are used in the previous test to demonstrate thread local variables
 threadlocal var thread_value: u32 = 0;
 fn testThreadValue() !void {
-    try testing.expectEqual(0, thread_value);
+    try expectEqual(0, thread_value);
     thread_value += 1;
-    try testing.expectEqual(1, thread_value);
+    try expectEqual(1, thread_value);
 }
 
 // TODO: addition, including wrapping (+/-%), saturating (+/-|), and chaos (+/-)
@@ -306,13 +307,13 @@ test "alloc/free" {
     const bytes = try allocator.alloc(u8, 8);
     defer allocator.free(bytes);
 
-    // raises error: ptr must be a single item pointer
+    // error: ptr must be a single item pointer
     // allocator.destroy(bytes);
 
     // thread panic: Invalid free
     // allocator.destroy(@as(*u8, @ptrCast(bytes.ptr)));
 
-    try testing.expectEqual([]u8, @TypeOf(bytes));
+    try expectEqual([]u8, @TypeOf(bytes));
 }
 
 test "create/destroy" {
@@ -320,23 +321,23 @@ test "create/destroy" {
     const object = try allocator.create(Type);
     defer allocator.destroy(object);
 
-    // raises error: Expected pointer, slice, array, or vector type, found '...*Type'
+    // error: Expected pointer, slice, array, or vector type, found '...*Type'
     // allocator.free(object);
 
-    try testing.expectEqual(*Type, @TypeOf(object));
+    try expectEqual(*Type, @TypeOf(object));
 }
 
 test "alloc/destroy" {
     const bytes = try allocator.alloc(u8, @sizeOf(usize));
     defer allocator.destroy(@as(*align(1) usize, @ptrCast(bytes.ptr)));
 
-    // raises error: @ptrCast increases pointer alignment
+    // error: @ptrCast increases pointer alignment
     // allocator.destroy(@as(*usize, @ptrCast(bytes.ptr)));
 
     // Segmentation fault at address 0x...
     // allocator.destroy(@as(*usize, @ptrCast(@alignCast(bytes.ptr))));
 
-    try testing.expectEqual([]u8, @TypeOf(bytes));
+    try expectEqual([]u8, @TypeOf(bytes));
 }
 
 test "create/free" {
@@ -350,7 +351,7 @@ test "create/free" {
     // warning: Allocation size 8 bytes does not match free size 1. Allocation:...
     // allocator.free(@as(*align(@sizeOf(Type)) [1]u8, @ptrCast(object)));
 
-    try testing.expectEqual(*Type, @TypeOf(object));
+    try expectEqual(*Type, @TypeOf(object));
 }
 
 test "Object.alloc/Object.free w/ extra data" {
@@ -363,10 +364,10 @@ test "Object.alloc/Object.free w/ extra data" {
             const bytes = try allocator.alignedAlloc(u8, .of(@This()), len);
             const object: *@This() = @ptrCast(bytes.ptr);
 
-            // raises error: @ptrCast increases pointer alignment
+            // error: @ptrCast increases pointer alignment
             // const bytes = try allocator.alloc(u8, len);
 
-            // raises error: epected type '...*Type' found '...*align(1) Type'
+            // error: epected type '...*Type' found '...*align(1) Type'
             // const object: *align(1) @This() = @ptrCast(bytes.ptr);
 
             object.len = len;
@@ -385,10 +386,52 @@ test "Object.alloc/Object.free w/ extra data" {
     const object = try Type.alloc(16);
     defer object.free();
 
-    try testing.expectEqual(*Type, @TypeOf(object));
+    try expectEqual(*Type, @TypeOf(object));
 }
 
-test "formatting objects" {
+test "basic formatting" {
+    var buf: [64]u8 = undefined;
+    const ptr: *anyopaque = &buf;
+
+    try expectEqualStrings("void", try bufPrint(&buf, "{}", .{void}));
+    try expectEqualStrings("null", try bufPrint(&buf, "{}", .{null}));
+    try expectEqualStrings("false", try bufPrint(&buf, "{}", .{false}));
+    try expectEqualStrings("1", try bufPrint(&buf, "{}", .{1}));
+    try expectEqualStrings("1.34", try bufPrint(&buf, "{}", .{1.34}));
+    try expectEqualStrings("65", try bufPrint(&buf, "{}", .{'A'}));
+    try expectStringStartsWith(try bufPrint(&buf, "{}", .{ptr}), "anyopaque@");
+
+    // error: cannot format slice without a specified (i.e. {s}, {x}, {b64}, or {any})
+    // try expectEqualStrings("foo", try bufPrint(&buf, "{}", .{"foo"}));
+
+    try expectEqualStrings("foo", try bufPrint(&buf, "{s}", .{"foo"}));
+    try expectEqualStrings("7f", try bufPrint(&buf, "{x}", .{127}));
+    try expectEqualStrings("7F", try bufPrint(&buf, "{X}", .{127}));
+    try expectEqualStrings("0x1.cp0", try bufPrint(&buf, "{x}", .{1.75}));
+    try expectEqualStrings("0x1.Cp0", try bufPrint(&buf, "{X}", .{1.75}));
+    try expectEqualStrings("Zm9v", try bufPrint(&buf, "{b64}", .{"foo"}));
+
+    // error: invalid format string '...' for type ...
+    // try expectEqualStrings("void", try bufPrint(&buf, "{s}", .{void}));
+    // try expectEqualStrings("null", try bufPrint(&buf, "{s}", .{null}));
+    // try expectEqualStrings("false", try bufPrint(&buf, "{s}", .{false}));
+    // try expectEqualStrings("1", try bufPrint(&buf, "{s}", .{1}));
+    // try expectEqualStrings("1.34", try bufPrint(&buf, "{s}", .{1.34}));
+    // try expectEqualStrings("65", try bufPrint(&buf, "{s}", .{'A'}));
+    // try expectEqualStrings("void", try bufPrint(&buf, "{x}", .{void}));
+    // try expectEqualStrings("null", try bufPrint(&buf, "{x}", .{null}));
+    // try expectEqualStrings("false", try bufPrint(&buf, "{x}", .{false}));
+
+    // error: expected type '[]const u8', found '*anyopaque'
+    // try expectStringStartsWith(try bufPrint(&buf, "{s}", .{ptr}), "anyopaque@");
+    // try expectStringStartsWith(try bufPrint(&buf, "{x}", .{ptr}), "anyopaque@");
+
+    const anon = try bufPrint(&buf, "{any}", .{struct { x: u8 = 1 }});
+    try expectStringStartsWith(anon, "tests.test.basic formatting__struct_");
+    try expectEqualStrings("{ 97, 98 }", try bufPrint(&buf, "{any}", .{"ab"}));
+}
+
+test "custom formatting" {
     const Point = struct {
         x: u16,
         y: u16,
@@ -402,5 +445,5 @@ test "formatting objects" {
     const formatted = try std.fmt.allocPrint(allocator, "{f}", .{point});
     defer allocator.free(formatted);
 
-    try testing.expectEqualSlices(u8, "3x17", formatted);
+    try expectEqualStrings("3x17", formatted);
 }
