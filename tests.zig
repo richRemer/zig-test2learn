@@ -352,3 +352,38 @@ test "create/free" {
 
     try testing.expectEqual(*Type, @TypeOf(object));
 }
+
+test "Object.alloc/Object.free w/ extra data" {
+    const Type = struct {
+        len: usize,
+
+        pub fn alloc(len: usize) !*@This() {
+            std.debug.assert(len >= @sizeOf(@This()));
+
+            const bytes = try allocator.alignedAlloc(u8, .of(@This()), len);
+            const object: *@This() = @ptrCast(bytes.ptr);
+
+            // raises error: @ptrCast increases pointer alignment
+            // const bytes = try allocator.alloc(u8, len);
+
+            // raises error: epected type '...*Type' found '...*align(1) Type'
+            // const object: *align(1) @This() = @ptrCast(bytes.ptr);
+
+            object.len = len;
+
+            return object;
+        }
+
+        pub fn free(this: *@This()) void {
+            allocator.free(@as(*[]align(@alignOf(@This())) u8, @ptrCast(@constCast(&.{
+                .ptr = this,
+                .len = this.len,
+            }))).*);
+        }
+    };
+
+    const object = try Type.alloc(16);
+    defer object.free();
+
+    try testing.expectEqual(*Type, @TypeOf(object));
+}
